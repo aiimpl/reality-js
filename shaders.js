@@ -369,7 +369,7 @@ void main(){
   vec3 Hh = normalize(L + V);
   vec2 needRel = vec2(-Hh.x / Hh.y, Hh.z / Hh.y) - grad;
   float sig = sqrt(0.02 + rp.z);
-  float gl = glints(p + vec2(0., uT * 0.15), needRel, fw, sig, 4.);
+  float gl = glints(p + vec2(0., uT * 0.15), needRel, fw, sig, 2.2);
   float clump = 0.25 + 1.5 * smoothstep(0.45, 0.85, vnoise(p * vec2(0.35, 0.7) + vec2(0., -uT * 0.6)));
   gl *= clump;
   col += vec3(1.) * gl * 110. * mix(0.3, 2.8, smoothstep(6., 60., dist)) * (1. - smoothstep(0.5, 1.2, s.foam));
@@ -397,7 +397,7 @@ void main(){
   float wbright = mix(0.45, 1.18, crev) * (0.9 + 0.2 * vnoise(p * vec2(40., 55.)));
   foamC *= mix(1., wbright, wh);
   col = mix(col, foamC, fm * mix(0.72, 0.95, max(wh, smoothstep(0.5, 0.9, cov))));
-  col += vec3(1.) * glints(p * 1.7 + 3., needRel, fw, 0.25, 9.) * (18. + 30. * wh) * fm;
+  col += vec3(1.) * glints(p * 1.7 + 3., needRel, fw, 0.25, 4.) * (18. + 30. * wh) * fm;
 
   // 遠くは空気で白む
   float haze = 1. - exp(-dist / 5000.);

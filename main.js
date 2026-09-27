@@ -133,10 +133,8 @@ function setCamera(t) {
   const h = track(HORIZON, t);
   const tanHalf = Math.tan(THREE.MathUtils.degToRad(VFOV / 2));
   const pitch = Math.atan((1 - 2 * h) * tanHalf);
-  // 手持ちの細かい揺れ
-  const jig = (a, f, p) => a * Math.sin(t * f + p);
-  camera.rotation.x = -pitch + THREE.MathUtils.degToRad(jig(0.05, 7.1, 0.3) + jig(0.03, 11.3, 1.7));
-  camera.rotation.y = THREE.MathUtils.degToRad(jig(0.25, 0.9, 0.4) + jig(0.08, 5.3, 2.2));
+  camera.rotation.x = -pitch;
+  camera.rotation.y = 0;
   camera.rotation.z = THREE.MathUtils.degToRad(track(ROLL, t));
   camera.updateMatrixWorld();
   const sky = track(SKY, t);
