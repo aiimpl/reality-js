@@ -1,53 +1,62 @@
-# Reality.js — 波打ち際
+# Reality.js — the shoreline
 
-晴れた日の波打ち際を、ブラウザの three.js だけで描いたものです。
-写真・動画・テクスチャ画像は使っていません。空・海・砂・泡・きらめきは、すべてシェーダーの計算です。
+A sunny shoreline, drawn in the browser with nothing but three.js.
+No photos, no video, no texture images. The sky, sea, sand, foam and glints are all computed in shaders.
 
-**ブラウザで開く：https://aiimpl.github.io/reality-js/**
+**Open in your browser: https://aiimpl.github.io/reality-js/**
 
-## できるもの
-- 21秒の波打ち際。沖のうねりが崩れて白波になり、砂を駆け上がって引いていく、を7回
-- 泡の網目：泡が減るほど穴が広がり、細い筋だけが残る
-- きらめき：波の傾きがちょうど太陽を映す点だけが光る。遠くでは光の帯になる
-- 逆光で透ける波頭の緑、濡れた砂に残る水の膜
-- 手持ちで撮ったようなカメラの揺れと、自動露出の明るさの揺れ
-- 書き出し：1920×1080・30fps の連番 PNG と mp4
+## What's in it
+- 21 seconds of shoreline: swell rolls in, breaks into whitewater, runs up the sand and drains back — seven times
+- Foam lace: as the foam thins, holes grow until only thin threads remain; the lace keeps re-forming as it drains
+- Glints: only the facets whose slope reflects the sun light up; far away they merge into a band of light
+- Green light through the backlit crests, and a thin film of water left on the wet sand
+- Handheld-style camera sway and auto-exposure drift
+- Export: 1920×1080, 30fps PNG sequence and mp4
 
-## 動作環境
-- 見るだけ：WebGL2 が動くブラウザ（Chrome / Safari / Edge）
-- 書き出し：Python 3.10+、Google Chrome、ffmpeg
+## Changes in v1.1
+Fixes from replies on X:
+- **Foam shadows**: the foam threads shade their camera-facing edges and cast a shadow a few cm toward the camera (the sun is behind the waves, 20° up)
+- **No more Voronoi**: the backwash lace is built from noise contours instead of Voronoi cells, so the holes are uneven. Two layers swap every 2.2s, so the pattern keeps changing and thins out instead of sitting still
+- **No marching pixels**: glints blink in place instead of drifting toward the beach; the white dots on the dry sand are gone
+- **Speed**: the offshore swell and ripples move at shallow-water speed
 
-## 使い方
+The breaking waves (whitewater) are unchanged from v1.0.
+
+## Requirements
+- Viewing: any browser with WebGL2 (Chrome / Safari / Edge)
+- Exporting: Python 3.10+, Google Chrome, ffmpeg
+
+## Usage
 ```sh
-make serve            # http://127.0.0.1:8791/ で開く（?t=10 で10秒目から）
-make setup            # 書き出し用の Playwright を入れる
-make video            # build/frames に630コマ → build/reality.mp4
+make serve            # open http://127.0.0.1:8791/ (?t=10 starts at 10s)
+make setup            # install Playwright for exporting
+make video            # 630 frames into build/frames → build/reality.mp4
 ```
-書き出しは Apple M 系の Mac で1コマ約1秒、全体で約12分です。
+On an Apple silicon Mac, exporting takes about 1–2 seconds per frame.
 
-## しくみ
-- **格子**：水と砂は同じ格子（手前ほど細かく、奥は9km先まで）を共有し、どちらも同じ関数から高さを出す。水の膜が砂より薄い所は画素単位で捨てる
-- **波**（`shaders.js` の `waveAt`）：1本ずつ時刻の式で計算する
-  - 近づく：前が切り立ち、後ろはなだらかな山
-  - 崩れる：波頭のてっぺんから白くなり、白波の段波が 2.8m/s で浜へ走る
-  - 遡上：汀線から一定の減速度で駆け上がり、止まって引く。先端は細い泡の線
-  - 右ほど早く着く斜め入射、横方向の高さ・崩れる位置のむら
-- **さざ波**：60本の波を足した法線。画素より細かい波は描かず、その分の傾きのばらつきをきらめきの広がりに回す
-- **きらめき**：面を小さな区画に分け、区画ごとに正規分布の傾きを振って、太陽を映す向きのものだけ光らせる。区画は時間で入れ替わるので瞬く
-- **泡**：ノイズの閾値で穴をあけた網目。白波は穴のない塊で、陰と光をつける
-- **仕上げ**：縦横2倍で描いて縮め、1コマを3回（1/120秒の幅）に分けて平均。明るすぎる所だけにじませ、太陽の真下に出る薄い縦筋を足す
-- **カメラ**：`track.js` の表（0.1秒刻みの水平線の高さ・傾き・露出）を補間
+## How it works
+- **Grid**: water and sand share one grid (finer near the camera, reaching 9 km out) and get their heights from the same function. Where the water film is thinner than the sand, the water is discarded per pixel
+- **Waves** (`waveAt` in `shaders.js`): each wave is a closed-form function of time
+  - Approach: steep front, gentle back
+  - Break: the crest turns white from the top, and the whitewater bore runs up the beach at 2.8 m/s
+  - Run-up: from the waterline it climbs with constant deceleration, stops and drains back; the leading edge is a thin line of foam
+  - Oblique arrival (the right side lands first), with variation in height and breaking position along the shore
+- **Ripples**: normals from 60 summed waves. Waves finer than a pixel are not drawn; their slope variance widens the glints instead
+- **Glints**: the surface is split into small cells, each with a normally distributed slope; only cells facing the sun light up. Cells re-roll over time, so they twinkle
+- **Foam**: lace made by thresholding noise contours; whitewater is a solid mass with shading and highlights
+- **Post**: rendered at 2× and downsampled, 3 sub-frames averaged per frame (1/120 s shutter), bloom on the brightest spots only, plus a faint vertical streak under the sun
+- **Camera**: interpolated from a table in `track.js` (horizon height, roll and exposure every 0.1 s)
 
-## 構成
+## Files
 ```
-index.html        ページ
-main.js           格子・カメラ・波の一覧・描画と書き出しの入口
-shaders.js        波・泡・きらめき・空・仕上げのシェーダー
-track.js          手持ちカメラの動きと露出の表
-tools/render.py   Chrome を開いて1コマずつ PNG に書き出す
-tools/encode.sh   連番 PNG → mp4（yuv420p）
-vendor/three      three.js r160（MIT）
+index.html        page
+main.js           grid, camera, wave list, render and export entry points
+shaders.js        waves, foam, glints, sky and post-processing shaders
+track.js          handheld camera motion and exposure table
+tools/render.py   opens Chrome and saves one PNG per frame
+tools/encode.sh   PNG sequence → mp4 (yuv420p)
+vendor/three      three.js r160 (MIT)
 ```
 
-## ライセンス
-MIT（`LICENSE`）。three.js は `vendor/three/LICENSE` のとおり MIT です。
+## License
+MIT (`LICENSE`). three.js is MIT as well, see `vendor/three/LICENSE`.

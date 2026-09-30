@@ -1,5 +1,5 @@
-# 使い方: python tools/render.py 出力ディレクトリ 時刻... | --range 開始 終了 fps
-# ブラウザが落ちても、できたコマは飛ばして続きから描く
+# usage: python tools/render.py OUT_DIR TIME... | --range START END FPS
+# if the browser crashes, frames already written are skipped and rendering resumes
 import sys, os, time, base64
 from playwright.sync_api import sync_playwright
 
@@ -27,7 +27,7 @@ with sync_playwright() as p:
             pg.goto(url)
             pg.wait_for_function('window.ready === true', timeout=60000)
             k = 0
-            while todo and k < 80:          # 80コマごとにブラウザを作り直す
+            while todo and k < 80:          # restart the browser every 80 frames
                 t, n = todo[0]
                 pg.evaluate(f'window.renderAt({t})')
                 data = pg.evaluate("document.querySelector('canvas').toDataURL('image/png')")

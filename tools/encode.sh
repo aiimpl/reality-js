@@ -1,5 +1,5 @@
 #!/bin/bash
-# 連番 PNG（30fps）を X に上げられる形式の mp4 にする: encode.sh コマのディレクトリ 出力.mp4
+# turn a 30fps PNG sequence into an mp4 that X accepts: encode.sh FRAME_DIR OUT.mp4
 set -e
 ffmpeg -v error -y -framerate 30 -i "$1/%05d.png" \
   -vf "scale=1920:1080:flags=lanczos:out_color_matrix=bt709:out_range=tv,format=yuv420p" \

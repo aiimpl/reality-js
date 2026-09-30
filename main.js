@@ -2,20 +2,20 @@ import * as THREE from 'three';
 import { NW, vert, frag, skyVert, skyFrag, postFrag } from './shaders.js';
 import { STEP, SKY, HORIZON, ROLL } from './track.js';
 
-// ---- 設定 ----
+// ---- settings ----
 const params = new URLSearchParams(location.search);
-const OFFLINE = params.has('render');           // 書き出し用（高画質・時間は外から渡す）
+const OFFLINE = params.has('render');           // export mode (high quality, time is passed in from outside)
 const W = OFFLINE ? 1920 : Math.min(innerWidth * devicePixelRatio, 1920);
 const H = OFFLINE ? 1080 : Math.round(W * 9 / 16);
-const SS = OFFLINE ? 2 : 1;                      // 縦横2倍で描いて縮める
-const SUB = OFFLINE ? 3 : 1;                     // 1コマを何回に分けて描いて平均するか
+const SS = OFFLINE ? 2 : 1;                      // render at 2x and downsample
+const SUB = OFFLINE ? 3 : 1;                     // sub-frames averaged per frame
 const SHUTTER = 1 / 120;
 const VFOV = 42;
-const CAM_Y = 0.24 + 0.92;                       // 足元の砂から 0.92m
+const CAM_Y = 0.24 + 0.92;                       // 0.92 m above the sand at the camera
 const LOOP = 21.2;
 
-// 波の一覧：崩れる時刻（画面中央で）、波高、駆け上がる距離、乱数の種
-// 遡上が足元近く（約3.3m）に届く時刻が 2.2 / 5.6 / 8.0 / 9.7 / 13.2 / 17.7 秒になるように置いてある
+// wave list: break time (at screen center), wave height, run-up distance, random seed
+// placed so the run-up reaches the camera (about 3.3 m) at 2.2 / 5.6 / 8.0 / 9.7 / 13.2 / 17.7 s
 const WAVES = [
   [-3.61, 0.34, 2.3, 0.11],
   [0.18, 0.39, 3.3, 0.37],
@@ -32,7 +32,7 @@ const sunElev = THREE.MathUtils.degToRad(20);
 const sunAz = THREE.MathUtils.degToRad(-1.5);
 const sun = new THREE.Vector3(Math.sin(sunAz) * Math.cos(sunElev), Math.sin(sunElev), -Math.cos(sunAz) * Math.cos(sunElev));
 
-// ---- 描画の準備 ----
+// ---- renderer setup ----
 const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(1);
 renderer.autoClear = false;
@@ -50,9 +50,9 @@ const uniforms = {
   uSun: { value: sun },
   uCam: { value: camera.position },
 };
-if (WAVES.length !== NW) throw new Error('波の数が合わない');
+if (WAVES.length !== NW) throw new Error('wave count does not match NW');
 
-// 水と砂で共有する格子：手前ほど細かく、奥は水平線の先まで
+// grid shared by water and sand: finer near the camera, reaching past the horizon
 function makeGrid(rows, cols, dMin, dMax) {
   const pos = new Float32Array(rows * cols * 3);
   const r = Math.pow(dMax / dMin, 1 / (rows - 1));
@@ -100,7 +100,7 @@ sky.renderOrder = -1;
 sky.frustumCulled = false;
 scene.add(sky);
 
-// 高解像度で描いて足し合わせる
+// render at high resolution and accumulate sub-frames
 const rtOpt = { type: THREE.HalfFloatType, depthBuffer: true };
 const rtScene = new THREE.WebGLRenderTarget(W * SS, H * SS, { ...rtOpt, samples: OFFLINE ? 4 : 0 });
 const rtAcc = new THREE.WebGLRenderTarget(W * SS, H * SS, { type: THREE.FloatType, depthBuffer: false });
@@ -123,7 +123,7 @@ quad.frustumCulled = false;
 quadScene.add(quad);
 const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-// カメラの向きと露出（track.js の表を時間で補間する）
+// camera orientation and exposure (interpolated from the table in track.js)
 function track(arr, t) {
   const f = Math.min(Math.max(t / STEP, 0), arr.length - 1.001);
   const i = Math.floor(f);
@@ -168,7 +168,7 @@ window.renderAt = (t) => {
   renderAt(t);
   const gl = renderer.getContext();
   const px = new Uint8Array(4);
-  gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); // 描き終わるまで待つ
+  gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); // wait until rendering finishes
   return true;
 };
 window.ready = true;
